@@ -81,7 +81,7 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             placeholder="e.g., Weekend Trip"
             required
           />
@@ -98,7 +98,7 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleSearch())}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="Search users by email or name"
             />
           </div>
@@ -139,13 +139,13 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
               {selectedMembers.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-3 py-1 rounded-full"
+                  className="flex items-center gap-2 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 px-3 py-1 rounded-full"
                 >
                   <span className="text-sm">{member.name}</span>
                   <button
                     type="button"
                     onClick={() => removeMember(member.id)}
-                    className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5"
+                    className="hover:bg-primary-200 dark:hover:bg-primary-800 rounded-full p-0.5"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -158,7 +158,7 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Creating...' : 'Create Group'}
         </button>

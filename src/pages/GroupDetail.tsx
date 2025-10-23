@@ -137,7 +137,7 @@ export const GroupDetail = () => {
                 key={member.id}
                 className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-full"
               >
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center">
                   <span className="text-white font-semibold text-sm">
                     {member.name.charAt(0).toUpperCase()}
                   </span>
@@ -171,7 +171,7 @@ export const GroupDetail = () => {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             Create Event
@@ -194,7 +194,7 @@ export const GroupDetail = () => {
               <div
                 key={event.id}
                 onClick={() => navigate(`/events/${event.id}`)}
-                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-all cursor-pointer border border-transparent hover:border-blue-500"
+                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-all cursor-pointer border border-transparent hover:border-primary-600 hover:bg-green-50"
               >
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   {event.title}
@@ -203,8 +203,8 @@ export const GroupDetail = () => {
                   {new Date(event.startDate).toLocaleDateString()} -{' '}
                   {new Date(event.endDate).toLocaleDateString()}
                 </p>
-                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                  ${event.totalAmount.toFixed(2)}
+                <p className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                  ₹{event.totalAmount.toFixed(2)}
                 </p>
               </div>
             ))}

@@ -20,7 +20,7 @@ export const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <Wallet className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <Wallet className="w-8 h-8 text-primary-600" />
             <span className="text-xl font-bold text-gray-900 dark:text-white">SplitWise</span>
           </div>
 
@@ -42,7 +42,7 @@ export const Navbar = () => {
                 onClick={() => setShowMenu(!showMenu)}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center">
                   <span className="text-white font-semibold text-sm">
                     {user?.name.charAt(0).toUpperCase()}
                   </span>

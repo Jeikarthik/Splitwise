@@ -49,7 +49,7 @@ export const Dashboard = () => {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             Create Group
@@ -77,7 +77,7 @@ export const Dashboard = () => {
             </p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg transition-colors"
             >
               <Plus className="w-5 h-5" />
               Create Your First Group
@@ -89,7 +89,7 @@ export const Dashboard = () => {
               <div
                 key={group.id}
                 onClick={() => navigate(`/groups/${group.id}`)}
-                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-all cursor-pointer border border-transparent hover:border-blue-500"
+                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md hover:shadow-lg transition-all cursor-pointer border border-transparent hover:border-primary-600 hover:bg-green-50"
               >
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
                   {group.name}

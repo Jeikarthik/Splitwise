@@ -14,7 +14,7 @@ export const Profile = () => {
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
           <div className="flex items-center justify-center mb-8">
-            <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-primary-600 flex items-center justify-center">
               <span className="text-white font-bold text-3xl">
                 {user?.name.charAt(0).toUpperCase()}
               </span>

@@ -66,7 +66,7 @@ export const EventDetail = () => {
   const getStatusBadge = (status: string) => {
     const badges = {
       PENDING: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200',
-      PAID: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
+      PAID: 'bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200',
       CONFIRMED: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
     };
     return badges[status as keyof typeof badges] || badges.PENDING;
@@ -115,8 +115,8 @@ export const EventDetail = () => {
             </div>
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
-              <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                ${event.totalAmount.toFixed(2)}
+              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                ₹{event.totalAmount.toFixed(2)}
               </span>
             </div>
           </div>
@@ -126,7 +126,7 @@ export const EventDetail = () => {
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Payments</h2>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             Create Payment
@@ -166,7 +166,7 @@ export const EventDetail = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        ${subEvent.totalAmount.toFixed(2)}
+                        ₹{subEvent.totalAmount.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export const EventDetail = () => {
                           className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
                               <span className="text-white font-semibold text-sm">
                                 {sharer.userName.charAt(0).toUpperCase()}
                               </span>
@@ -196,7 +196,7 @@ export const EventDetail = () => {
                                 {sharer.userName}
                               </p>
                               <p className="text-sm text-gray-600 dark:text-gray-400">
-                                ${sharer.amount.toFixed(2)}
+                                ₹{sharer.amount.toFixed(2)}
                               </p>
                             </div>
                           </div>
@@ -214,7 +214,7 @@ export const EventDetail = () => {
                     {userShare && userShare.status === 'PENDING' && !isPayer && (
                       <button
                         onClick={() => handleMarkPaid(subEvent.id)}
-                        className="mt-4 w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
+                        className="mt-4 w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg transition-colors"
                       >
                         <CheckCircle className="w-5 h-5" />
                         Mark My Share as Paid
@@ -224,7 +224,7 @@ export const EventDetail = () => {
                     {isPayer && allPaid && (
                       <button
                         onClick={() => handleConfirmPayment(subEvent.id)}
-                        className="mt-4 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"
+                        className="mt-4 w-full flex items-center justify-center gap-2 bg-accent-500 hover:bg-accent-600 text-white py-2.5 rounded-lg transition-colors shadow-md hover:shadow-lg font-semibold"
                       >
                         <CheckCircle className="w-5 h-5" />
                         Confirm All Payments

@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Modal } from './Modal';
-import { subEventAPI, eventAPI } from '../lib/api';
+import { subEventAPI, eventAPI, groupAPI } from '../lib/api';
 import { User } from '../types';
 import { useToast } from './Toast';
 
@@ -30,7 +30,7 @@ export const CreateSubEventModal = ({
     const fetchEventData = async () => {
       try {
         const response = await eventAPI.getById(eventId);
-        const groupResponse = await eventAPI.getById(response.data.groupId);
+        const groupResponse = await groupAPI.getById(response.data.groupId);
         setGroupMembers(groupResponse.data.members || []);
       } catch (error) {
         showToast('Failed to load group members', 'error');
@@ -123,7 +123,7 @@ export const CreateSubEventModal = ({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             placeholder="e.g., Lunch"
             required
           />
@@ -131,14 +131,14 @@ export const CreateSubEventModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Total Amount ($)
+            Total Amount (₹)
           </label>
           <input
             type="number"
             step="0.01"
             value={totalAmount}
             onChange={(e) => setTotalAmount(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             placeholder="0.00"
             required
           />
@@ -174,49 +174,102 @@ export const CreateSubEventModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Select Sharers
+            {splitType === 'EQUAL' ? 'Select Sharers' : 'Select Sharers & Enter Custom Amounts'}
           </label>
           <div className="space-y-2 max-h-60 overflow-y-auto">
-            {groupMembers.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-              >
-                <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedSharers.includes(member.id)}
-                    onChange={() => toggleSharer(member.id)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                    {member.name}
-                  </span>
-                  {splitType === 'EQUAL' && selectedSharers.includes(member.id) && (
-                    <span className="text-sm text-gray-600 dark:text-gray-400 ml-auto">
-                      ${equalShare.toFixed(2)}
+            {splitType === 'CUSTOM' ? (
+              selectedSharers.length > 0 ? (
+                selectedSharers.map((sharerId) => {
+                  const member = groupMembers.find(m => m.id === sharerId);
+                  if (!member) return null;
+                  return (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 bg-green-50 dark:bg-gray-700 rounded-lg border-2 border-primary-200 dark:border-primary-800"
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleSharer(member.id)}
+                          className="text-red-500 hover:text-red-700 font-bold"
+                        >
+                          ✕
+                        </button>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {member.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">₹</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={customAmounts[member.id] || ''}
+                          onChange={(e) => handleCustomAmountChange(member.id, e.target.value)}
+                          className="w-24 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                  Select users below to add custom amounts
+                </p>
+              )
+            ) : (
+              groupMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                >
+                  <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedSharers.includes(member.id)}
+                      onChange={() => toggleSharer(member.id)}
+                      className="w-4 h-4 accent-primary-600"
+                    />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {member.name}
                     </span>
-                  )}
-                </label>
-                {splitType === 'CUSTOM' && selectedSharers.includes(member.id) && (
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={customAmounts[member.id] || ''}
-                    onChange={(e) => handleCustomAmountChange(member.id, e.target.value)}
-                    className="w-24 px-2 py-1 ml-2 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-600 text-gray-900 dark:text-white text-sm"
-                    placeholder="0.00"
-                  />
-                )}
-              </div>
-            ))}
+                    {selectedSharers.includes(member.id) && (
+                      <span className="text-sm text-primary-600 dark:text-primary-400 ml-auto font-semibold">
+                        ₹{equalShare.toFixed(2)}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              ))
+            )}
           </div>
+          {splitType === 'CUSTOM' && (
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Add more sharers:</p>
+              <div className="flex flex-wrap gap-2">
+                {groupMembers
+                  .filter(m => !selectedSharers.includes(m.id))
+                  .map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => toggleSharer(member.id)}
+                      className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-primary-50 hover:border-primary-600 hover:bg-green-50 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      + {member.name}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Creating...' : 'Create Payment'}
         </button>
