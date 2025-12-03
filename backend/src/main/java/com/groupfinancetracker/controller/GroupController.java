@@ -84,6 +84,12 @@ public class GroupController {
                 ? SecurityContextHolder.getContext().getAuthentication().getDetails()
                 : null;
         Long actorId = details instanceof Long ? (Long) details : null;
+        System.out.println(
+                "Approve Join Request: groupId=" + groupId + ", requestId=" + requestId + ", actorId=" + actorId);
+        if (actorId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
         return groupJoinService.approve(groupId, requestId, actorId);
     }
 
@@ -93,6 +99,12 @@ public class GroupController {
                 ? SecurityContextHolder.getContext().getAuthentication().getDetails()
                 : null;
         Long actorId = details instanceof Long ? (Long) details : null;
+        System.out.println(
+                "Reject Join Request: groupId=" + groupId + ", requestId=" + requestId + ", actorId=" + actorId);
+        if (actorId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
         return groupJoinService.reject(groupId, requestId, actorId);
     }
 
@@ -156,8 +168,6 @@ public class GroupController {
         return groupService.respondToInvitation(invitationId, actorId, req.status());
     }
 
-                
-                
     @GetMapping("/{groupId}/weeks/new-event-warning")
     public com.groupfinancetracker.dto.DtoModels.NewEventWarningResponse newEventWarning(@PathVariable Long groupId,
             @RequestParam(value = "date", required = false) java.time.LocalDate date) {
@@ -166,7 +176,9 @@ public class GroupController {
 
     @DeleteMapping("/{groupId}")
     public void delete(@PathVariable Long groupId) {
-        Object details = SecurityContextHolder.getContext().getAuthentication() != null ? SecurityContextHolder.getContext().getAuthentication().getDetails() : null;
+        Object details = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getDetails()
+                : null;
         Long actorId = details instanceof Long ? (Long) details : null;
         groupService.delete(groupId, actorId);
     }

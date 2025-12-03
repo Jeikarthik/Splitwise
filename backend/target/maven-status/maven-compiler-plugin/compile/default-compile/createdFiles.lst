@@ -12,6 +12,7 @@ com\groupfinancetracker\dto\DtoModels$GroupPairwise.class
 com\groupfinancetracker\dto\DtoModels$AuthResponse.class
 com\groupfinancetracker\dto\DtoModels$RespondInvitationRequest.class
 com\groupfinancetracker\dto\DtoModels$UpdateGroupRequest.class
+com\groupfinancetracker\dto\DtoModels$SpendResponse.class
 com\groupfinancetracker\dto\DtoModels$SubmitJoinRequest.class
 com\groupfinancetracker\dto\DtoModels$UserResponse.class
 com\groupfinancetracker\dto\DtoModels$ToReceiveEntry.class
@@ -22,9 +23,11 @@ com\groupfinancetracker\dto\DtoModels$GroupResponse.class
 com\groupfinancetracker\dto\DtoModels$ShareSplit.class
 com\groupfinancetracker\dto\DtoModels$CreateUserRequest.class
 com\groupfinancetracker\dto\DtoModels$WeekSummary.class
+com\groupfinancetracker\dto\DtoModels$NewEventWarningResponse.class
 com\groupfinancetracker\dto\DtoModels$CreateInvitationRequest.class
 com\groupfinancetracker\dto\DtoModels$ConfirmPaymentRequest.class
 com\groupfinancetracker\dto\DtoModels$CreateEventRequest.class
+com\groupfinancetracker\dto\DtoModels$EventSettlementResponse.class
 com\groupfinancetracker\GroupFinanceTrackerApplication.class
 com\groupfinancetracker\dto\DtoModels$AddMemberRequest.class
 com\groupfinancetracker\dto\DtoModels$UserBalance.class

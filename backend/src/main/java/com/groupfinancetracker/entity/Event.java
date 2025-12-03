@@ -13,7 +13,11 @@ import java.util.List;
 @Table(name = "events", indexes = {
         @Index(name = "idx_event_week_year", columnList = "week_number,year")
 })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,8 +38,11 @@ public class Event {
     @Builder.Default
     private List<SubEvent> subEvents = new ArrayList<>();
 
-    @Column(name = "event_date")
-    private LocalDate eventDate;
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @Column(name = "week_number")
     private Integer weekNumber;
@@ -51,7 +58,8 @@ public class Event {
 
     @PrePersist
     public void prePersist() {
-        if (createdAt == null) createdAt = Instant.now();
+        if (createdAt == null)
+            createdAt = Instant.now();
         computeWeekYear();
     }
 
@@ -61,11 +69,12 @@ public class Event {
     }
 
     private void computeWeekYear() {
-        if (this.weekNumber != null && this.year != null) return;
-        if (this.eventDate != null) {
+        if (this.weekNumber != null && this.year != null)
+            return;
+        if (this.startDate != null) {
             WeekFields wf = WeekFields.ISO;
-            this.weekNumber = this.eventDate.get(wf.weekOfWeekBasedYear());
-            this.year = this.eventDate.get(wf.weekBasedYear());
+            this.weekNumber = this.startDate.get(wf.weekOfWeekBasedYear());
+            this.year = this.startDate.get(wf.weekBasedYear());
         } else {
             this.weekNumber = null;
             this.year = null;

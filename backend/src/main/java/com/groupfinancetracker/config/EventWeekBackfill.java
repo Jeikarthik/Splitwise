@@ -24,15 +24,18 @@ public class EventWeekBackfill {
             List<Event> events = eventRepository.findAll();
             LocalDate base = subEventRepository.findEarliestSubEventDate();
             for (Event e : events) {
-                if (e.getWeekNumber() != null && e.getYear() != null) continue;
-                LocalDate date = e.getEventDate();
+                if (e.getWeekNumber() != null && e.getYear() != null)
+                    continue;
+                LocalDate date = e.getStartDate();
                 if (date == null && e.getCreatedAt() != null) {
                     date = e.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
                 }
-                if (date == null) continue; // cannot assign without any date
+                if (date == null)
+                    continue; // cannot assign without any date
                 LocalDate b = base != null ? base : date;
                 int weekIndex = (int) ChronoUnit.WEEKS.between(b, date) + 1;
-                if (weekIndex < 1) weekIndex = 1;
+                if (weekIndex < 1)
+                    weekIndex = 1;
                 e.setWeekNumber(weekIndex);
                 e.setYear(1);
                 eventRepository.save(e);

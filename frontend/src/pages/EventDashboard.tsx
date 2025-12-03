@@ -131,6 +131,9 @@ export default function EventDashboard() {
             <Box>
               <Typography variant="h4" fontWeight="bold" gutterBottom>{event.name}</Typography>
               <Typography variant="subtitle1" color="text.secondary">
+                {event.startDate && new Date(event.startDate).toLocaleDateString()} - {event.endDate && new Date(event.endDate).toLocaleDateString()}
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary">
                 Your total spend: <Box component="span" fontWeight="bold" color="primary.main">{formatMoney(mySpend)}</Box>
               </Typography>
             </Box>
@@ -219,7 +222,16 @@ export default function EventDashboard() {
             <Stack spacing={2} sx={{ mt: 1 }}>
               <TextField label="Description" value={description} onChange={e => setDescription(e.target.value)} fullWidth />
               <TextField label="Total Amount" type="number" value={totalAmount} onChange={e => setTotalAmount(e.target.value)} fullWidth />
-              <TextField label="Date" type="date" InputLabelProps={{ shrink: true }} value={subEventDate} onChange={e => setSubEventDate(e.target.value)} fullWidth />
+              <TextField
+                label="Date"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={subEventDate}
+                onChange={e => setSubEventDate(e.target.value)}
+                inputProps={{ min: event.startDate, max: event.endDate }}
+                helperText={`Must be between ${new Date(event.startDate).toLocaleDateString()} and ${new Date(event.endDate).toLocaleDateString()}`}
+                fullWidth
+              />
 
               <TextField select label="Participants" SelectProps={{
                 multiple: true, value: selectedMembers, onChange: e => {

@@ -32,7 +32,7 @@ export const GroupsApi = {
 }
 
 export const EventsApi = {
-  create: (payload: { groupId: number; name: string; creatorId: number; eventDate?: string }) => api.post('/events', payload).then(r => r.data),
+  create: (payload: { groupId: number; name: string; creatorId: number; startDate: string; endDate: string }) => api.post('/events', payload).then(r => r.data),
   listByGroup: (groupId: number) => api.get(`/groups/${groupId}/events`).then(r => r.data),
   listByGroupWeek: (groupId: number, week: number, year: number) => api.get(`/groups/${groupId}/events/by-week`, { params: { week, year } }).then(r => r.data),
   listWeeks: (groupId: number) => api.get(`/groups/${groupId}/weeks`).then(r => r.data),

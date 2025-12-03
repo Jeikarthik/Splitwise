@@ -34,17 +34,23 @@ public class EventService {
                 .orElseThrow(() -> new NotFoundException("Group not found: " + req.groupId()));
         User creator = userRepository.findById(req.creatorId())
                 .orElseThrow(() -> new NotFoundException("Creator not found: " + req.creatorId()));
-        LocalDate date = req.eventDate();
-        if (date == null)
-            date = LocalDate.now();
-        Event e = Event.builder().name(req.name()).group(group).creator(creator).eventDate(date).build();
+        LocalDate start = req.startDate();
+        LocalDate end = req.endDate();
+        if (start == null)
+            start = LocalDate.now();
+        if (end == null)
+            end = start;
+        if (end.isBefore(start))
+            throw new IllegalArgumentException("End date cannot be before start date");
+
+        Event e = Event.builder().name(req.name()).group(group).creator(creator).startDate(start).endDate(end).build();
         // Assign custom week/year aligned with SubEventService so events appear in
         // weekly view immediately
-        if (e.getEventDate() != null) {
+        if (e.getStartDate() != null) {
             LocalDate base = subEventRepository.findEarliestSubEventDate();
             if (base == null)
-                base = e.getEventDate();
-            int weekIndex = (int) ChronoUnit.WEEKS.between(base, e.getEventDate()) + 1;
+                base = e.getStartDate();
+            int weekIndex = (int) ChronoUnit.WEEKS.between(base, e.getStartDate()) + 1;
             e.setWeekNumber(weekIndex);
             e.setYear(1);
         }
@@ -70,7 +76,7 @@ public class EventService {
         if (fromEvents != null)
             fromEvents.forEach(ev -> eventIds.add(ev.getId()));
         return eventRepository.findAllById(eventIds).stream()
-                .sorted(Comparator.comparing(Event::getEventDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                .sorted(Comparator.comparing(Event::getStartDate, Comparator.nullsLast(Comparator.naturalOrder())))
                 .map(this::toDto)
                 .toList();
     }
@@ -124,7 +130,8 @@ public class EventService {
                 e.getGroup().getId(),
                 e.getCreator().getId(),
                 e.getCreatedAt(),
-                e.getEventDate(),
+                e.getStartDate(),
+                e.getEndDate(),
                 e.getWeekNumber(),
                 e.getYear());
     }

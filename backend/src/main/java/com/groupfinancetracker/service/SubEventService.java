@@ -30,9 +30,17 @@ public class SubEventService {
         User payer = userRepository.findById(req.payerId())
                 .orElseThrow(() -> new NotFoundException("Payer not found: " + req.payerId()));
 
-        // Compute custom week numbering starting at 1 from the first subevent date in the app
+        // Validate date
+        if (req.subEventDate().isBefore(event.getStartDate()) || req.subEventDate().isAfter(event.getEndDate())) {
+            throw new IllegalArgumentException("Expense date must be within event dates (" + event.getStartDate()
+                    + " to " + event.getEndDate() + ")");
+        }
+
+        // Compute custom week numbering starting at 1 from the first subevent date in
+        // the app
         LocalDate base = subEventRepository.findEarliestSubEventDate();
-        if (base == null) base = req.subEventDate();
+        if (base == null)
+            base = req.subEventDate();
         int weekIndex = (int) ChronoUnit.WEEKS.between(base, req.subEventDate()) + 1; // week-1 based
 
         SubEvent se = SubEvent.builder()
@@ -75,13 +83,14 @@ public class SubEventService {
             s.setPaymentStatus(ps);
             sum = sum.add(split.amount());
         }
-        
+
         BigDecimal diff = sum.subtract(req.totalAmount()).abs();
         if (diff.compareTo(new BigDecimal("0.01")) > 0) {
             throw new IllegalStateException("Share splits must sum to total amount");
         }
 
-        // No longer deleting old weeks; we will hide older pages in UI while preserving history
+        // No longer deleting old weeks; we will hide older pages in UI while preserving
+        // history
 
         return toDto(se);
     }
@@ -91,7 +100,8 @@ public class SubEventService {
     }
 
     public DtoModels.SubEventResponse get(Long id) {
-        SubEvent se = subEventRepository.findById(id).orElseThrow(() -> new NotFoundException("SubEvent not found: " + id));
+        SubEvent se = subEventRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("SubEvent not found: " + id));
         return toDto(se);
     }
 

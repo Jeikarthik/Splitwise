@@ -49,7 +49,8 @@ export default function GroupDetailsPage() {
 
   // Forms
   const [newEventName, setNewEventName] = useState('')
-  const [newEventDate, setNewEventDate] = useState('')
+  const [newEventStartDate, setNewEventStartDate] = useState('')
+  const [newEventEndDate, setNewEventEndDate] = useState('')
   const [newMemberId, setNewMemberId] = useState<number | ''>('')
 
   const [groupCode, setGroupCode] = useState<string>('')
@@ -63,7 +64,10 @@ export default function GroupDetailsPage() {
     GroupsApi.get(gid).then(g => {
       setGroup(g)
       if (user && user.id === g.creatorId) {
-        GroupsApi.listJoinRequests(gid).then(setJoinRequests).catch(() => { })
+        GroupsApi.listJoinRequests(gid).then(data => {
+          console.log('Fetched Join Requests:', data)
+          setJoinRequests(data)
+        }).catch(() => { })
       }
     }).catch(setError)
     EventsApi.listByGroup(gid).then(setEvents).catch(setError)
@@ -112,26 +116,38 @@ export default function GroupDetailsPage() {
 
   const createEvent = async () => {
     if (!user) return
-    const dateStr = newEventDate || new Date().toISOString().slice(0, 10)
+    const startStr = newEventStartDate || new Date().toISOString().slice(0, 10)
+    const endStr = newEventEndDate || startStr
     try {
-      const warn: any = await GroupsApi.newEventWarning(gid, dateStr)
+      const warn: any = await GroupsApi.newEventWarning(gid, startStr)
       if (warn?.warn && warn.pendingPayments > 0) {
         const proceed = window.confirm(warn.message || 'Creating this event will hide the oldest page which has pending payments. Proceed?')
         if (!proceed) return
       }
     } catch { }
-    await EventsApi.create({ groupId: gid, name: newEventName, creatorId: user.id, eventDate: dateStr })
+    await EventsApi.create({ groupId: gid, name: newEventName, creatorId: user.id, startDate: startStr, endDate: endStr })
     setNewEventName('')
-    setNewEventDate('')
+    setNewEventStartDate('')
+    setNewEventEndDate('')
     setCreateEventOpen(false)
     refresh()
   }
 
   const approveJoin = async (requestId: number) => {
+    console.log('Approve Join:', { gid, requestId })
+    if (!requestId) {
+      console.error('Invalid requestId:', requestId)
+      return
+    }
     try { await GroupsApi.approveJoin(gid, requestId); refresh() } catch { }
   }
 
   const rejectJoin = async (requestId: number) => {
+    console.log('Reject Join:', { gid, requestId })
+    if (!requestId) {
+      console.error('Invalid requestId:', requestId)
+      return
+    }
     try { await GroupsApi.rejectJoin(gid, requestId); refresh() } catch { }
   }
 
@@ -217,7 +233,7 @@ export default function GroupDetailsPage() {
                       <Typography variant="h6" fontWeight="bold" gutterBottom>{e.name}</Typography>
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Typography variant="body2" color="text.secondary">
-                          {e.eventDate ? new Date(e.eventDate).toLocaleDateString() : 'No Date'}
+                          {e.startDate ? new Date(e.startDate).toLocaleDateString() : ''} - {e.endDate ? new Date(e.endDate).toLocaleDateString() : ''}
                         </Typography>
                         <Chip label="Open" size="small" color="success" variant="outlined" />
                       </Stack>
@@ -334,13 +350,23 @@ export default function GroupDetailsPage() {
             />
             <TextField
               margin="dense"
-              label="Date"
+              label="Start Date"
               type="date"
               fullWidth
               variant="outlined"
               InputLabelProps={{ shrink: true }}
-              value={newEventDate}
-              onChange={e => setNewEventDate(e.target.value)}
+              value={newEventStartDate}
+              onChange={e => setNewEventStartDate(e.target.value)}
+            />
+            <TextField
+              margin="dense"
+              label="End Date"
+              type="date"
+              fullWidth
+              variant="outlined"
+              InputLabelProps={{ shrink: true }}
+              value={newEventEndDate}
+              onChange={e => setNewEventEndDate(e.target.value)}
             />
           </DialogContent>
           <DialogActions>

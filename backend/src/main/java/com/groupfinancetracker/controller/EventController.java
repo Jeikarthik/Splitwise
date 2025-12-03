@@ -22,7 +22,8 @@ public class EventController {
                 ? SecurityContextHolder.getContext().getAuthentication().getDetails()
                 : null;
         Long actorId = details instanceof Long ? (Long) details : req.creatorId();
-        return eventService.create(new CreateEventRequest(req.groupId(), req.name(), actorId, req.eventDate()));
+        return eventService
+                .create(new CreateEventRequest(req.groupId(), req.name(), actorId, req.startDate(), req.endDate()));
     }
 
     @GetMapping("/api/groups/{groupId}/events")

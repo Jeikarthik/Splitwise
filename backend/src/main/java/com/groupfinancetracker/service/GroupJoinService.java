@@ -156,6 +156,7 @@ public class GroupJoinService {
     private DtoModels.JoinRequestResponse toDto(GroupJoinRequest jr) {
         return new DtoModels.JoinRequestResponse(
                 jr.getId(),
+                jr.getGroup().getId(),
                 jr.getGroupCode(),
                 jr.getRequester().getId(),
                 jr.getStatus().name(),
