@@ -11,5 +11,9 @@ import java.util.Optional;
 @Repository
 public interface GroupInvitationRepository extends JpaRepository<GroupInvitation, Long> {
     List<GroupInvitation> findByInvitedUserIdAndStatus(Long invitedUserId, JoinRequestStatus status);
-    Optional<GroupInvitation> findByGroupIdAndInvitedUserIdAndStatus(Long groupId, Long invitedUserId, JoinRequestStatus status);
+
+    Optional<GroupInvitation> findByGroupIdAndInvitedUserIdAndStatus(Long groupId, Long invitedUserId,
+            JoinRequestStatus status);
+
+    List<GroupInvitation> findByGroupId(Long groupId);
 }

@@ -24,17 +24,21 @@ export const GroupsApi = {
   approveJoin: (groupId: number, requestId: number) => api.post(`/groups/${groupId}/join-requests/${requestId}/approve`).then(r => r.data),
   rejectJoin: (groupId: number, requestId: number) => api.post(`/groups/${groupId}/join-requests/${requestId}/reject`).then(r => r.data),
   invite: (groupId: number, invitedUserId: number) => api.post(`/groups/${groupId}/invite`, { groupId, invitedUserId }).then(r => r.data),
-  listMyInvitations: () => api.get('/groups/invitations/my').then(r => r.data),
-  respondToInvitation: (invitationId: number, status: 'ACCEPTED' | 'REJECTED') => api.post(`/groups/invitations/${invitationId}/respond`, { status }).then(r => r.data),
+  listMyInvitations: (userId: number) => api.get(`/groups/invitations/my`, { params: { userId } }).then(r => r.data),
+  respondToInvitation: (invitationId: number, status: 'ACCEPTED' | 'REJECTED', userId: number) => api.post(`/groups/invitations/${invitationId}/respond`, { status, userId }).then(r => r.data),
   newEventWarning: (groupId: number, date?: string) => api.get(`/groups/${groupId}/weeks/new-event-warning`, { params: { date } }).then(r => r.data),
+  deleteGroup: (groupId: number) => api.delete(`/groups/${groupId}`).then(r => r.data),
+  listPendingJoinRequests: () => api.get('/groups/requests/pending').then(r => r.data),
 }
 
 export const EventsApi = {
   create: (payload: { groupId: number; name: string; creatorId: number; eventDate?: string }) => api.post('/events', payload).then(r => r.data),
   listByGroup: (groupId: number) => api.get(`/groups/${groupId}/events`).then(r => r.data),
-  listByWeek: (groupId: number, week: number, year: number) => api.get(`/groups/${groupId}/events/by-week`, { params: { week, year } }).then(r => r.data),
+  listByGroupWeek: (groupId: number, week: number, year: number) => api.get(`/groups/${groupId}/events/by-week`, { params: { week, year } }).then(r => r.data),
   listWeeks: (groupId: number) => api.get(`/groups/${groupId}/weeks`).then(r => r.data),
   get: (id: number) => api.get(`/events/${id}`).then(r => r.data),
+  newEventWarning: (groupId: number, date?: string) => api.get(`/groups/${groupId}/weeks/new-event-warning`, { params: { date } }).then(r => r.data),
+  deleteEvent: (id: number) => api.delete(`/events/${id}`).then(r => r.data),
 }
 
 export const SubEventsApi = {

@@ -18,22 +18,40 @@ public class EventController {
 
     @PostMapping("/api/events")
     public EventResponse create(@Valid @RequestBody CreateEventRequest req) {
-        Object details = SecurityContextHolder.getContext().getAuthentication() != null ? SecurityContextHolder.getContext().getAuthentication().getDetails() : null;
+        Object details = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getDetails()
+                : null;
         Long actorId = details instanceof Long ? (Long) details : req.creatorId();
         return eventService.create(new CreateEventRequest(req.groupId(), req.name(), actorId, req.eventDate()));
     }
 
     @GetMapping("/api/groups/{groupId}/events")
-    public List<EventResponse> listByGroup(@PathVariable Long groupId) { return eventService.listByGroup(groupId); }
+    public List<EventResponse> listByGroup(@PathVariable Long groupId) {
+        return eventService.listByGroup(groupId);
+    }
 
     @GetMapping("/api/groups/{groupId}/events/by-week")
-    public List<EventResponse> listByWeek(@PathVariable Long groupId, @RequestParam("week") Integer weekNumber, @RequestParam("year") Integer year) {
+    public List<EventResponse> listByWeek(@PathVariable Long groupId, @RequestParam("week") Integer weekNumber,
+            @RequestParam("year") Integer year) {
         return eventService.listByGroupWeek(groupId, weekNumber, year);
     }
 
     @GetMapping("/api/groups/{groupId}/weeks")
-    public List<WeekSummary> listWeeks(@PathVariable Long groupId) { return eventService.listWeeks(groupId); }
+    public List<WeekSummary> listWeeks(@PathVariable Long groupId) {
+        return eventService.listWeeks(groupId);
+    }
 
     @GetMapping("/api/events/{id}")
-    public EventResponse get(@PathVariable Long id) { return eventService.get(id); }
+    public EventResponse get(@PathVariable Long id) {
+        return eventService.get(id);
+    }
+
+    @DeleteMapping("/api/events/{id}")
+    public void delete(@PathVariable Long id) {
+        Object details = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getDetails()
+                : null;
+        Long actorId = details instanceof Long ? (Long) details : null;
+        eventService.delete(id, actorId);
+    }
 }

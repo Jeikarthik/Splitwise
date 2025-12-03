@@ -53,21 +53,24 @@ public class GroupService {
     }
 
     public void addMember(Long groupId, Long userId) {
-        Group g = groupRepository.findById(groupId).orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
+        Group g = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
         User u = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found: " + userId));
         g.getMembers().add(u);
         groupRepository.save(g);
     }
 
     public void removeMember(Long groupId, Long userId) {
-        Group g = groupRepository.findById(groupId).orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
+        Group g = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
         g.getMembers().removeIf(m -> m.getId().equals(userId));
         groupRepository.save(g);
     }
 
     private DtoModels.GroupResponse toDto(Group g) {
         Set<Long> memberIds = g.getMembers().stream().map(User::getId).collect(java.util.stream.Collectors.toSet());
-        return new DtoModels.GroupResponse(g.getId(), g.getName(), g.getCreator().getId(), memberIds, g.getCreatedAt(), g.getGroupCode());
+        return new DtoModels.GroupResponse(g.getId(), g.getName(), g.getCreator().getId(), memberIds, g.getCreatedAt(),
+                g.getGroupCode());
     }
 
     private String generateUniqueCode() {
@@ -76,23 +79,31 @@ public class GroupService {
         for (int attempt = 0; attempt < 10; attempt++) {
             int len = 8 + rnd.nextInt(3);
             StringBuilder sb = new StringBuilder(len);
-            for (int i = 0; i < len; i++) sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
+            for (int i = 0; i < len; i++)
+                sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
             String code = sb.toString();
-            if (!groupRepository.existsByGroupCode(code)) return code;
+            if (!groupRepository.existsByGroupCode(code))
+                return code;
         }
-        // Fallback: generate fixed-length code with prefix and ensure uniqueness without substring issues
+        // Fallback: generate fixed-length code with prefix and ensure uniqueness
         while (true) {
             StringBuilder sb = new StringBuilder(10);
             sb.append('G').append('R').append('P');
-            for (int i = 0; i < 7; i++) sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
+            for (int i = 0; i < 7; i++)
+                sb.append(alphabet.charAt(rnd.nextInt(alphabet.length())));
             String code = sb.toString();
-            if (!groupRepository.existsByGroupCode(code)) return code;
+            if (!groupRepository.existsByGroupCode(code))
+                return code;
         }
     }
+
     public DtoModels.InvitationResponse createInvitation(Long groupId, Long invitedUserId, Long invitedById) {
-        Group g = groupRepository.findById(groupId).orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
-        User invitedUser = userRepository.findById(invitedUserId).orElseThrow(() -> new NotFoundException("User not found: " + invitedUserId));
-        User invitedBy = userRepository.findById(invitedById).orElseThrow(() -> new NotFoundException("User not found: " + invitedById));
+        Group g = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
+        User invitedUser = userRepository.findById(invitedUserId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + invitedUserId));
+        User invitedBy = userRepository.findById(invitedById)
+                .orElseThrow(() -> new NotFoundException("User not found: " + invitedById));
 
         // Check if already member
         if (g.getMembers().contains(invitedUser)) {
@@ -100,8 +111,10 @@ public class GroupService {
         }
 
         // Check if pending invitation exists
-        if (groupInvitationRepository.findByGroupIdAndInvitedUserIdAndStatus(groupId, invitedUserId, JoinRequestStatus.PENDING).isPresent()) {
-             throw new IllegalArgumentException("Invitation already exists for this user");
+        if (groupInvitationRepository
+                .findByGroupIdAndInvitedUserIdAndStatus(groupId, invitedUserId, JoinRequestStatus.PENDING)
+                .isPresent()) {
+            throw new IllegalArgumentException("Invitation already exists for this user");
         }
 
         GroupInvitation invitation = GroupInvitation.builder()
@@ -133,7 +146,7 @@ public class GroupService {
 
         JoinRequestStatus status = JoinRequestStatus.valueOf(statusStr.toUpperCase());
         if (status != JoinRequestStatus.ACCEPTED && status != JoinRequestStatus.REJECTED) {
-             throw new IllegalArgumentException("Invalid status: " + statusStr);
+            throw new IllegalArgumentException("Invalid status: " + statusStr);
         }
 
         invitation.setStatus(status);
@@ -149,6 +162,25 @@ public class GroupService {
         return toInvitationDto(invitation);
     }
 
+    public void delete(Long groupId, Long actorUserId) {
+        Group g = groupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
+        if (!g.getCreator().getId().equals(actorUserId)) {
+            throw new com.groupfinancetracker.exception.ForbiddenActionException(
+                    "Only the group creator can delete the group");
+        }
+        // Check if group has any events
+        if (!g.getEvents().isEmpty()) {
+            throw new IllegalStateException(
+                    "Cannot delete group with existing events. Please delete all events first.");
+        }
+
+        // Delete invitations
+        groupInvitationRepository.deleteAll(groupInvitationRepository.findByGroupId(groupId));
+
+        groupRepository.delete(g);
+    }
+
     private DtoModels.InvitationResponse toInvitationDto(GroupInvitation i) {
         return new DtoModels.InvitationResponse(
                 i.getId(),
@@ -159,7 +191,6 @@ public class GroupService {
                 i.getInvitedBy().getId(),
                 i.getInvitedBy().getName(),
                 i.getStatus().name(),
-                i.getCreatedAt()
-        );
+                i.getCreatedAt());
     }
 }
