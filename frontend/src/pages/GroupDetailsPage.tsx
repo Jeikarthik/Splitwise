@@ -123,8 +123,12 @@ export default function GroupDetailsPage() {
     const endStr = newEventEndDate || startStr
     try {
       const warn: any = await GroupsApi.newEventWarning(gid, startStr)
-      if (warn?.warn && warn.pendingPayments > 0) {
-        const proceed = window.confirm(warn.message || 'Creating this event will hide the oldest page which has pending payments. Proceed?')
+      if (warn?.warn) {
+        if (warn.blocked) {
+          alert(warn.message || 'Cannot create event due to pending payments in the oldest week.')
+          return
+        }
+        const proceed = window.confirm(warn.message || 'Creating this event will hide the oldest page. Proceed?')
         if (!proceed) return
       }
     } catch { }

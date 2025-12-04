@@ -19,7 +19,7 @@ export interface ToReceiveEntry { userId: number; fromUser: string; amount: stri
 export interface PairwiseBalance { user1Id: number; user1: string; user2Id: number; user2: string; amount: string; owedBy: string }
 export interface WeeklySettlementResponse { weekNumber: number; year: number; currentUser: number; toPay: ToPayEntry[]; toReceive: ToReceiveEntry[]; pairwiseBalances: PairwiseBalance[] }
 export interface InvitationResponse { id: number; groupId: number; groupName: string; invitedUserId: number; invitedUserName: string; invitedById: number; invitedByName: string; status: 'PENDING' | 'ACCEPTED' | 'REJECTED'; createdAt: string }
-export interface NewEventWarningResponse { warn: boolean; droppingWeek?: number | null; droppingYear?: number | null; pendingPayments: number; message?: string | null }
+export interface NewEventWarningResponse { warn: boolean; blocked: boolean; droppingWeek?: number | null; droppingYear?: number | null; pendingPayments: number; message?: string | null }
 export interface EventSettlementResponse { eventId: number; pairwiseBalances: PairwiseBalance[] }
 export interface PairwiseOwe { fromUserId: number; toUserId: number; amount: string }
 export interface GroupPairwise { groupId: number; owes: PairwiseOwe[] }

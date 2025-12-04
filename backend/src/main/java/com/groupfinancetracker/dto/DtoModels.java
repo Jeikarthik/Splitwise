@@ -124,7 +124,7 @@ public final class DtoModels {
         public record EventSettlementResponse(Long eventId, List<PairwiseBalance> pairwiseBalances) {
         }
 
-        public record NewEventWarningResponse(boolean warn, Integer droppingWeek, Integer droppingYear,
+        public record NewEventWarningResponse(boolean warn, boolean blocked, Integer droppingWeek, Integer droppingYear,
                         int pendingPayments,
                         String message) {
         }

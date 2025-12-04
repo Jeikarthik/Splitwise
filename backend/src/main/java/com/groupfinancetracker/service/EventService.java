@@ -43,19 +43,70 @@ public class EventService {
         if (end.isBefore(start))
             throw new IllegalArgumentException("End date cannot be before start date");
 
-        Event e = Event.builder().name(req.name()).group(group).creator(creator).startDate(start).endDate(end).build();
-        // Assign custom week/year aligned with SubEventService so events appear in
-        // weekly view immediately
-        if (e.getStartDate() != null) {
-            LocalDate base = subEventRepository.findEarliestSubEventDate();
-            if (base == null)
-                base = e.getStartDate();
-            int weekIndex = (int) ChronoUnit.WEEKS.between(base, e.getStartDate()) + 1;
-            e.setWeekNumber(weekIndex);
-            e.setYear(1);
+        // Calculate potential new week index
+        LocalDate base = subEventRepository.findEarliestSubEventDate();
+        if (base == null)
+            base = start;
+        // Align base to start of week (Sunday)
+        base = base.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY));
+
+        int weekIndex = (int) ChronoUnit.WEEKS.between(base, start) + 1;
+
+        // Check if this creates a new week > 10
+        // Get existing weeks
+        Set<String> weekKeys = new HashSet<>();
+        for (Object[] arr : subEventRepository.listDistinctWeeksAscByGroup(req.groupId())) {
+            weekKeys.add(((Number) arr[1]).intValue() + "-" + ((Number) arr[0]).intValue());
         }
+        for (Event ev : eventRepository.findByGroup_Id(req.groupId())) {
+            if (ev.getWeekNumber() != null)
+                weekKeys.add(ev.getWeekNumber() + "-" + ev.getYear());
+        }
+
+        boolean isNewWeek = !weekKeys.contains(weekIndex + "-1");
+        if (isNewWeek && weekKeys.size() >= 10) {
+            // Find oldest week
+            int minWeek = Integer.MAX_VALUE;
+            for (String k : weekKeys) {
+                int w = Integer.parseInt(k.split("-")[0]);
+                if (w < minWeek)
+                    minWeek = w;
+            }
+
+            // Check pending
+            var shares = shareRepository
+                    .findBySubEvent_Event_Group_IdAndSubEvent_WeekNumberAndSubEvent_Year(req.groupId(), minWeek, 1);
+            boolean hasPending = shares.stream().anyMatch(s -> s.getPaymentStatus() == null
+                    || s.getPaymentStatus().getStatus() != com.groupfinancetracker.entity.PaymentState.CONFIRMED);
+
+            if (hasPending) {
+                throw new IllegalStateException(
+                        "Cannot create event. The oldest page (Week " + minWeek + ") has pending payments.");
+            }
+
+            // Delete oldest week
+            deleteWeek(req.groupId(), minWeek, 1);
+        }
+
+        Event e = Event.builder().name(req.name()).group(group).creator(creator).startDate(start).endDate(end).build();
+        e.setWeekNumber(weekIndex);
+        e.setYear(1);
         e = eventRepository.save(e);
         return toDto(e);
+    }
+
+    private void deleteWeek(Long groupId, Integer week, Integer year) {
+        // Delete subevents (cascades to shares)
+        List<Long> eventIds = subEventRepository.findEventIdsByGroupAndWeek(groupId, week, year);
+        // We need to delete subevents specifically in this week, but subEventRepository
+        // doesn't expose delete by week directly easily without custom query or
+        // iteration
+        // Actually, we should delete EVENTS that are in this week?
+        // Wait, an event can span weeks? The current logic assigns ONE weekNumber to an
+        // Event.
+        // So we delete all Events with this weekNumber.
+        List<Event> events = eventRepository.findByGroup_IdAndWeekNumberAndYear(groupId, week, year);
+        eventRepository.deleteAll(events);
     }
 
     public List<DtoModels.EventResponse> listByGroup(@NonNull Long groupId) {
@@ -140,10 +191,13 @@ public class EventService {
         if (!groupRepository.existsById(groupId))
             throw new NotFoundException("Group not found: " + groupId);
         java.time.LocalDate eventDate = (date != null) ? date : java.time.LocalDate.now();
+
         // Compute custom week index aligned with SubEventService
         java.time.LocalDate base = subEventRepository.findEarliestSubEventDate();
         if (base == null)
             base = eventDate;
+        base = base.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY));
+
         int weekIndex = (int) java.time.temporal.ChronoUnit.WEEKS.between(base, eventDate) + 1;
 
         // Build distinct weeks as numeric pairs
@@ -170,7 +224,7 @@ public class EventService {
         boolean alreadyPresent = weekKeys.contains(1 + ":" + weekIndex); // year is always 1 in custom scheme
         int newSize = deduped.size() + (alreadyPresent ? 0 : 1);
         if (newSize <= 10) {
-            return new DtoModels.NewEventWarningResponse(false, null, null, 0, null);
+            return new DtoModels.NewEventWarningResponse(false, false, null, null, 0, null);
         }
         // Identify the week that would be dropped: the earliest (min year, then min
         // week)
@@ -181,7 +235,7 @@ public class EventService {
             }
         }
         if (earliest == null) {
-            return new DtoModels.NewEventWarningResponse(false, null, null, 0, null);
+            return new DtoModels.NewEventWarningResponse(false, false, null, null, 0, null);
         }
         Integer dropYear = earliest[0];
         Integer dropWeek = earliest[1];
@@ -197,11 +251,12 @@ public class EventService {
             }
         }
         if (pending > 0) {
-            String msg = "Adding this event creates a new page and hides the oldest page. There are " + pending
-                    + " pending payments there.";
-            return new DtoModels.NewEventWarningResponse(true, dropWeek, dropYear, pending, msg);
+            String msg = "Cannot create event. The oldest page (Week " + dropWeek + ") has " + pending
+                    + " pending payments. Please settle them first.";
+            return new DtoModels.NewEventWarningResponse(true, true, dropWeek, dropYear, pending, msg);
         }
-        return new DtoModels.NewEventWarningResponse(false, dropWeek, dropYear, 0, null);
+        String msg = "Adding this event creates a new page and deletes the oldest page (Week " + dropWeek + ").";
+        return new DtoModels.NewEventWarningResponse(true, false, dropWeek, dropYear, 0, msg);
     }
 
     public void delete(Long eventId, Long actorUserId) {
