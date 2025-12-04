@@ -16,6 +16,8 @@ export default function GroupDashboard() {
   const [error, setError] = useState<any>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
+  const [joinOpen, setJoinOpen] = useState(false)
+  const [joinCode, setJoinCode] = useState('')
   const [invitations, setInvitations] = useState<any[]>([])
   const [joinRequests, setJoinRequests] = useState<any[]>([])
 
@@ -35,6 +37,17 @@ export default function GroupDashboard() {
       await GroupsApi.create({ name: newGroupName, creatorId: user.id, memberIds: [user.id] })
       setNewGroupName('')
       setCreateOpen(false)
+      refresh()
+    } catch (e) { setError(e) }
+  }
+
+  const joinGroup = async () => {
+    if (!user || !joinCode) return
+    try {
+      await GroupsApi.submitJoinRequest({ groupCode: joinCode, userId: user.id })
+      setJoinCode('')
+      setJoinOpen(false)
+      alert('Join request sent!')
       refresh()
     } catch (e) { setError(e) }
   }
@@ -99,9 +112,14 @@ export default function GroupDashboard() {
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">My Groups</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
-            New Group
-          </Button>
+          <Stack direction="row" spacing={2}>
+            <Button variant="outlined" startIcon={<GroupIcon />} onClick={() => setJoinOpen(true)}>
+              Join Group
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+              New Group
+            </Button>
+          </Stack>
         </Stack>
 
         <Grid container spacing={3}>
@@ -150,6 +168,25 @@ export default function GroupDashboard() {
           <DialogActions>
             <Button onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button onClick={createGroup} variant="contained" disabled={!newGroupName}>Create</Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={joinOpen} onClose={() => setJoinOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Join Group</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Group Code"
+              fullWidth
+              variant="outlined"
+              value={joinCode}
+              onChange={e => setJoinCode(e.target.value)}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setJoinOpen(false)}>Cancel</Button>
+            <Button onClick={joinGroup} variant="contained" disabled={!joinCode}>Join</Button>
           </DialogActions>
         </Dialog>
       </Container>

@@ -26,6 +26,7 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final GroupInvitationRepository groupInvitationRepository;
+    private final SettlementService settlementService;
 
     public DtoModels.GroupResponse create(DtoModels.CreateGroupRequest req) {
         User creator = userRepository.findById(req.creatorId())
@@ -60,9 +61,31 @@ public class GroupService {
         groupRepository.save(g);
     }
 
-    public void removeMember(Long groupId, Long userId) {
+    public void removeMember(Long groupId, Long userId, Long actorUserId) {
         Group g = groupRepository.findById(groupId)
                 .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
+
+        // Only creator can remove members
+        if (!g.getCreator().getId().equals(actorUserId)) {
+            throw new com.groupfinancetracker.exception.ForbiddenActionException(
+                    "Only the group creator can remove members");
+        }
+
+        // Cannot remove creator
+        if (g.getCreator().getId().equals(userId)) {
+            throw new IllegalArgumentException("Cannot remove the group creator");
+        }
+
+        // Check for pending settlements (non-zero balance)
+        var summary = settlementService.groupSummary(groupId);
+        boolean hasBalance = summary.balances().stream()
+                .anyMatch(
+                        ub -> ub.userId().equals(userId) && ub.netBalance().compareTo(java.math.BigDecimal.ZERO) != 0);
+
+        if (hasBalance) {
+            throw new IllegalStateException("Cannot remove member with pending settlements (non-zero balance)");
+        }
+
         g.getMembers().removeIf(m -> m.getId().equals(userId));
         groupRepository.save(g);
     }

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Box, Button, Card, CardActionArea, CardContent, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Fab, Grid, IconButton, List, ListItem, ListItemAvatar, ListItemText, MenuItem, Paper, Stack, Tab, Tabs, TextField, Tooltip, Typography, useTheme, Avatar } from '@mui/material'
 import AppHeader from '@components/AppHeader'
 import ErrorAlert from '@components/ErrorAlert'
-import { EventsApi, GroupsApi, UsersApi } from '@api/index'
-import type { EventResponse, GroupResponse, UserResponse, WeekSummary } from '@api/types'
+import { EventsApi, GroupsApi, UsersApi, SettlementsApi } from '@api/index'
+import type { EventResponse, GroupResponse, UserResponse, WeekSummary, GroupSettlementSummary } from '@api/types'
 import { useAuth } from '@context/AuthContext'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -59,6 +59,7 @@ export default function GroupDetailsPage() {
   const [selectedWeek, setSelectedWeek] = useState<number | ''>('')
   const [selectedYear, setSelectedYear] = useState<number | ''>('')
   const [eventsByWeek, setEventsByWeek] = useState<EventResponse[]>([])
+  const [settlementSummary, setSettlementSummary] = useState<GroupSettlementSummary | null>(null)
 
   const refresh = () => {
     GroupsApi.get(gid).then(g => {
@@ -72,6 +73,8 @@ export default function GroupDetailsPage() {
     }).catch(setError)
     EventsApi.listByGroup(gid).then(setEvents).catch(setError)
     UsersApi.list().then(setUsers).catch(setError)
+    // Fetch settlement summary for member removal checks
+    SettlementsApi.group(gid).then(setSettlementSummary).catch(() => { })
     GroupsApi.getCode(gid).then((r: any) => setGroupCode(r.groupCode)).catch(() => setGroupCode(''))
     EventsApi.listWeeks(gid).then((ws: WeekSummary[]) => {
       setWeeks(ws)
@@ -256,22 +259,35 @@ export default function GroupDetailsPage() {
             <Button startIcon={<PersonAddIcon />} onClick={() => setInviteOpen(true)}>Invite Member</Button>
           </Stack>
           <Grid container spacing={2}>
-            {members.map(m => (
-              <Grid item xs={12} sm={6} md={4} key={m.id}>
-                <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar>{m.name.charAt(0).toUpperCase()}</Avatar>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight="bold">{m.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">ID: {m.id}</Typography>
-                    </Box>
-                  </Stack>
-                  <IconButton color="error" size="small" onClick={() => removeMember(m.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </Paper>
-              </Grid>
-            ))}
+            {members.map(m => {
+              const isCreator = user?.id === group.creatorId
+              const isSelf = user?.id === m.id
+              const memberBalance = settlementSummary?.balances.find(b => b.userId === m.id)?.netBalance || 0
+              const hasBalance = Number(memberBalance) !== 0
+
+              return (
+                <Grid item xs={12} sm={6} md={4} key={m.id}>
+                  <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Avatar>{m.name.charAt(0).toUpperCase()}</Avatar>
+                      <Box>
+                        <Typography variant="subtitle1" fontWeight="bold">{m.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">ID: {m.id}</Typography>
+                      </Box>
+                    </Stack>
+                    {isCreator && !isSelf && (
+                      <Tooltip title={hasBalance ? "Cannot remove member with pending settlements" : "Remove Member"}>
+                        <span>
+                          <IconButton color="error" size="small" onClick={() => removeMember(m.id)} disabled={hasBalance}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </Paper>
+                </Grid>
+              )
+            })}
           </Grid>
         </CustomTabPanel>
 

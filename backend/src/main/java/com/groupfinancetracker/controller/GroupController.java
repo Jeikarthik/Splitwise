@@ -43,7 +43,11 @@ public class GroupController {
 
     @DeleteMapping("/{groupId}/members/{userId}")
     public void removeMember(@PathVariable Long groupId, @PathVariable Long userId) {
-        groupService.removeMember(groupId, userId);
+        Object details = SecurityContextHolder.getContext().getAuthentication() != null
+                ? SecurityContextHolder.getContext().getAuthentication().getDetails()
+                : null;
+        Long actorId = details instanceof Long ? (Long) details : null;
+        groupService.removeMember(groupId, userId, actorId);
     }
 
     @PostMapping("/{groupId}/generate-code")
