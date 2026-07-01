@@ -24,6 +24,12 @@ public class PaymentStatus {
     private Instant markedAt;
     private Instant confirmedAt;
 
+    @Column(name = "transaction_ref")
+    private String transactionRef;
+
+    @Column(name = "proof_url")
+    private String proofUrl;
+
     @Version
     private Long version;
 }

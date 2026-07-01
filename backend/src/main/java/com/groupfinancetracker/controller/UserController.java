@@ -24,11 +24,21 @@ public class UserController {
     @GetMapping
     public List<UserResponse> list() { return userService.list(); }
 
+    @GetMapping("/search")
+    public List<UserResponse> search(@RequestParam("q") String query) {
+        return userService.search(query);
+    }
+
     @GetMapping("/{id}")
     public UserResponse get(@PathVariable Long id) { return userService.get(id); }
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) { userService.delete(id); }
+
+    @PutMapping("/{id}")
+    public UserResponse updateProfile(@PathVariable Long id, @Valid @RequestBody com.groupfinancetracker.dto.DtoModels.UpdateProfileRequest req) {
+        return userService.updateProfile(id, req);
+    }
 
     @GetMapping("/{userId}/join-requests")
     public List<JoinRequestResponse> userJoinRequests(@PathVariable Long userId) {

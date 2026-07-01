@@ -37,11 +37,15 @@ public class ShareService {
                 s.getId(),
                 s.getSubEvent().getId(),
                 s.getUser().getId(),
+                s.getUser().getName(),
+                s.getUser().getUpiId(),
                 s.getSubEvent().getPayer().getId(),
                 s.getAmount(),
                 s.getPaymentStatus() != null ? s.getPaymentStatus().getStatus() : null,
                 s.getPaymentStatus() != null ? s.getPaymentStatus().getMarkedAt() : null,
-                s.getPaymentStatus() != null ? s.getPaymentStatus().getConfirmedAt() : null
+                s.getPaymentStatus() != null ? s.getPaymentStatus().getConfirmedAt() : null,
+                s.getPaymentStatus() != null ? s.getPaymentStatus().getTransactionRef() : null,
+                s.getPaymentStatus() != null ? s.getPaymentStatus().getProofUrl() : null
         );
     }
 }

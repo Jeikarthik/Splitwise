@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +54,9 @@ public class SubEventService {
                 .subEventDate(req.subEventDate())
                 .weekNumber(weekIndex)
                 .year(1) // single sequence; we don't use calendar years for custom weeks
+                .isRecurring(req.isRecurring())
+                .recurringPeriod(req.recurringPeriod())
+                .nextRunDate(req.isRecurring() ? computeNextRunDate(Instant.now(), req.recurringPeriod()) : null)
                 .build();
         se = subEventRepository.save(se);
 
@@ -105,9 +110,78 @@ public class SubEventService {
         return toDto(se);
     }
 
+    private Instant computeNextRunDate(Instant base, String period) {
+        if (period == null) return null;
+        switch (period.toUpperCase()) {
+            case "DAILY":
+                return base.plus(1, java.time.temporal.ChronoUnit.DAYS);
+            case "WEEKLY":
+                return base.plus(7, java.time.temporal.ChronoUnit.DAYS);
+            case "MONTHLY":
+                return base.plus(30, java.time.temporal.ChronoUnit.DAYS);
+            default:
+                return null;
+        }
+    }
+
     private DtoModels.SubEventResponse toDto(SubEvent se) {
         return new DtoModels.SubEventResponse(se.getId(), se.getDescription(), se.getTotalAmount(),
                 se.getPayer().getId(), se.getEvent().getId(), se.getEvent().getCreator().getId(), se.getTimestamp(),
-                se.getSubEventDate(), se.getWeekNumber(), se.getYear());
+                se.getSubEventDate(), se.getWeekNumber(), se.getYear(), se.isRecurring(), se.getRecurringPeriod(), se.getNextRunDate());
+    }
+
+    public List<DtoModels.WeeklyReportItem> getWeeklyReport(Long userId) {
+        List<SubEvent> subEvents = subEventRepository.findInvolvedSubEvents(userId);
+        List<DtoModels.WeeklyReportItem> report = new ArrayList<>();
+
+        for (SubEvent se : subEvents) {
+            boolean isPayer = se.getPayer().getId().equals(userId);
+
+            Optional<Share> userShareOpt = se.getShares().stream()
+                    .filter(s -> s.getUser().getId().equals(userId))
+                    .findFirst();
+
+            boolean isSharer = userShareOpt.isPresent();
+
+            String role;
+            if (isPayer && isSharer) {
+                role = "PAYER_AND_SHARER";
+            } else if (isPayer) {
+                role = "PAYER";
+            } else {
+                role = "SHARER";
+            }
+
+            BigDecimal myShareAmount = isSharer ? userShareOpt.get().getAmount() : BigDecimal.ZERO;
+
+            String status = "N/A";
+            if (isSharer) {
+                Share s = userShareOpt.get();
+                if (s.getPaymentStatus() != null) {
+                    status = s.getPaymentStatus().getStatus().name();
+                } else {
+                    status = "PENDING";
+                }
+            }
+
+            report.add(new DtoModels.WeeklyReportItem(
+                    se.getId(),
+                    se.getDescription(),
+                    se.getTotalAmount(),
+                    se.getSubEventDate(),
+                    se.getWeekNumber(),
+                    se.getYear(),
+                    se.getEvent().getId(),
+                    se.getEvent().getName(),
+                    se.getEvent().getGroup().getId(),
+                    se.getEvent().getGroup().getName(),
+                    se.getPayer().getId(),
+                    se.getPayer().getName(),
+                    role,
+                    myShareAmount,
+                    status
+            ));
+        }
+        return report;
     }
 }

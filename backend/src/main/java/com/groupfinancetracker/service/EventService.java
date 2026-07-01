@@ -175,6 +175,7 @@ public class EventService {
     }
 
     private DtoModels.EventResponse toDto(Event e) {
+        java.math.BigDecimal totalAmount = subEventRepository.sumTotalByEvent(e.getId());
         return new DtoModels.EventResponse(
                 e.getId(),
                 e.getName(),
@@ -184,7 +185,8 @@ public class EventService {
                 e.getStartDate(),
                 e.getEndDate(),
                 e.getWeekNumber(),
-                e.getYear());
+                e.getYear(),
+                totalAmount != null ? totalAmount : java.math.BigDecimal.ZERO);
     }
 
     public DtoModels.NewEventWarningResponse newEventWarning(@NonNull Long groupId, java.time.LocalDate date) {

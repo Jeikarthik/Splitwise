@@ -39,7 +39,21 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    public DtoModels.UserResponse updateProfile(Long userId, DtoModels.UpdateProfileRequest req) {
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
+        u.setName(req.name());
+        u.setUpiId(req.upiId());
+        u = userRepository.save(u);
+        return toDto(u);
+    }
+
+    public List<DtoModels.UserResponse> search(String query) {
+        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query)
+                .stream().map(this::toDto).toList();
+    }
+
     private DtoModels.UserResponse toDto(User u) {
-        return new DtoModels.UserResponse(u.getId(), u.getName(), u.getEmail(), u.getCreatedAt());
+        return new DtoModels.UserResponse(u.getId(), u.getName(), u.getEmail(), u.getUpiId(), u.getCreatedAt());
     }
 }

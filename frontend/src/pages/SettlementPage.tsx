@@ -77,13 +77,20 @@ export default function SettlementPage() {
           {pairwise?.owes.map((owe, idx) => (
             <Card key={idx} variant="outlined">
               <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Typography fontWeight="bold">{getUserName(owe.fromUserId)}</Typography>
-                  <Box display="flex" flexDirection="column" alignItems="center">
-                    <Typography variant="caption" color="text.secondary">owes</Typography>
-                    <ArrowForwardIcon color="action" fontSize="small" />
+                <Box display="flex" flexDirection="column" gap={0.5}>
+                  <Box display="flex" alignItems="center" gap={2}>
+                    <Typography fontWeight="bold">{getUserName(owe.fromUserId)}</Typography>
+                    <Box display="flex" flexDirection="column" alignItems="center">
+                      <Typography variant="caption" color="text.secondary">owes</Typography>
+                      <ArrowForwardIcon color="action" fontSize="small" />
+                    </Box>
+                    <Typography fontWeight="bold">{getUserName(owe.toUserId)}</Typography>
                   </Box>
-                  <Typography fontWeight="bold">{getUserName(owe.toUserId)}</Typography>
+                  {owe.description && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', mt: 0.5 }}>
+                      💡 {owe.description}
+                    </Typography>
+                  )}
                 </Box>
                 <Typography variant="h6" color="error.main">
                   ₹{Number(owe.amount).toFixed(2)}

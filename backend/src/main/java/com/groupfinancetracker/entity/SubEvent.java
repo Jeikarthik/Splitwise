@@ -49,6 +49,16 @@ public class SubEvent {
     @Column(name = "year")
     private Integer year;
 
+    @Column(name = "is_recurring")
+    @Builder.Default
+    private boolean isRecurring = false;
+
+    @Column(name = "recurring_period")
+    private String recurringPeriod;
+
+    @Column(name = "next_run_date")
+    private Instant nextRunDate;
+
     @Version
     private Long version;
 

@@ -18,7 +18,10 @@ public final class DtoModels {
                         @NotBlank @Size(min = 8) String password) {
         }
 
-        public record UserResponse(Long id, String name, String email, Instant createdAt) {
+        public record UserResponse(Long id, String name, String email, String upiId, Instant createdAt) {
+        }
+
+        public record UpdateProfileRequest(@NotBlank String name, String upiId) {
         }
 
         public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
@@ -27,14 +30,25 @@ public final class DtoModels {
         public record AuthResponse(@NotBlank String token, UserResponse user) {
         }
 
-        public record CreateGroupRequest(@NotBlank String name, @NotNull Long creatorId, Set<Long> memberIds) {
+        /** Google OAuth: credential is the Google ID token from the frontend */
+        public record GoogleAuthRequest(@NotBlank String credential) {
+        }
+
+        /** Forgot-password: verified via master password sent by email at signup */
+        public record ForgotPasswordRequest(
+                @NotBlank @Email String email,
+                @NotBlank String masterPassword,
+                @NotBlank @Size(min = 8) String newPassword) {
+        }
+
+        public record CreateGroupRequest(@NotBlank String name, @NotNull Long creatorId, Set<Long> memberIds, BigDecimal budgetLimit) {
         }
 
         public record UpdateGroupRequest(@NotBlank String name) {
         }
 
         public record GroupResponse(Long id, String name, Long creatorId, Set<Long> memberIds, Instant createdAt,
-                        String groupCode) {
+                        String groupCode, BigDecimal budgetLimit) {
         }
 
         public record AddMemberRequest(@NotNull Long userId) {
@@ -51,7 +65,7 @@ public final class DtoModels {
         }
 
         public record EventResponse(Long id, String name, Long groupId, Long creatorId, Instant createdAt,
-                        LocalDate startDate, LocalDate endDate, Integer weekNumber, Integer year) {
+                        LocalDate startDate, LocalDate endDate, Integer weekNumber, Integer year, BigDecimal totalAmount) {
         }
 
         public record CreateSubEventRequest(
@@ -60,7 +74,9 @@ public final class DtoModels {
                         @NotNull @Positive BigDecimal totalAmount,
                         @NotNull Long payerId,
                         @NotNull LocalDate subEventDate,
-                        @NotEmpty List<ShareSplit> shares) {
+                        @NotEmpty List<ShareSplit> shares,
+                        boolean isRecurring,
+                        String recurringPeriod) {
         }
 
         public record ShareSplit(@NotNull Long userId, @NotNull @Positive BigDecimal amount) {
@@ -68,14 +84,33 @@ public final class DtoModels {
 
         public record SubEventResponse(Long id, String description, BigDecimal totalAmount, Long payerId, Long eventId,
                         Long eventCreatorId, Instant timestamp, LocalDate subEventDate, Integer weekNumber,
-                        Integer year) {
+                        Integer year, boolean isRecurring, String recurringPeriod, Instant nextRunDate) {
         }
 
-        public record ShareResponse(Long id, Long subEventId, Long userId, Long payerId, BigDecimal amount,
-                        PaymentState status, Instant markedAt, Instant confirmedAt) {
+        public record WeeklyReportItem(
+                        Long subEventId,
+                        String subEventDescription,
+                        BigDecimal totalAmount,
+                        LocalDate subEventDate,
+                        Integer weekNumber,
+                        Integer year,
+                        Long eventId,
+                        String eventName,
+                        Long groupId,
+                        String groupName,
+                        Long payerId,
+                        String payerName,
+                        String role, // "PAYER", "SHARER", "PAYER_AND_SHARER"
+                        BigDecimal myShareAmount,
+                        String status // "PENDING", "PAID", "CONFIRMED", "N/A"
+        ) {
         }
 
-        public record MarkPaymentRequest(@NotNull Long shareId, @NotNull Long actorUserId) {
+        public record ShareResponse(Long id, Long subEventId, Long userId, String userName, String userUpiId, Long payerId, BigDecimal amount,
+                        PaymentState status, Instant markedAt, Instant confirmedAt, String transactionRef, String proofUrl) {
+        }
+
+        public record MarkPaymentRequest(@NotNull Long shareId, @NotNull Long actorUserId, String transactionRef, String proofUrl) {
         }
 
         public record ConfirmPaymentRequest(@NotNull Long shareId, @NotNull Long actorUserId) {
@@ -90,10 +125,10 @@ public final class DtoModels {
         public record UserOutstandingDebts(Long userId, List<ShareResponse> debts) {
         }
 
-        public record PairwiseOwe(Long fromUserId, Long toUserId, BigDecimal amount) {
+        public record PairwiseOwe(Long fromUserId, Long toUserId, BigDecimal amount, String description) {
         }
 
-        public record GroupPairwise(Long groupId, List<PairwiseOwe> owes) {
+        public record GroupPairwise(Long groupId, List<PairwiseOwe> owes, List<PairwiseBalance> pairwiseBalances) {
         }
 
         public record SubmitJoinRequest(@NotBlank String groupCode, @NotNull Long userId) {
@@ -113,7 +148,7 @@ public final class DtoModels {
         }
 
         public record PairwiseBalance(Long user1Id, String user1, Long user2Id, String user2, BigDecimal amount,
-                        String owedBy) {
+                        String owedBy, String description) {
         }
 
         public record WeeklySettlementResponse(Integer weekNumber, Integer year, Long currentUser,

@@ -32,7 +32,7 @@ public class DataInitializer {
                                         .create(new CreateUserRequest("Carol", "carol@example.com", "password123"));
 
                         GroupResponse grp = groupService.create(new CreateGroupRequest("Goa Trip Group", alice.id(),
-                                        Set.of(bob.id(), carol.id())));
+                                        Set.of(bob.id(), carol.id()), null));
 
                         EventResponse evt = eventService.create(new CreateEventRequest(grp.id(), "Goa Trip", alice.id(),
                                         LocalDate.now(), LocalDate.now().plusDays(5)));
@@ -45,7 +45,9 @@ public class DataInitializer {
                                         LocalDate.now(),
                                         List.of(
                                                         new ShareSplit(bob.id(), new BigDecimal("500.00")),
-                                                        new ShareSplit(carol.id(), new BigDecimal("1000.00")))));
+                                                        new ShareSplit(carol.id(), new BigDecimal("1000.00"))),
+                                        false,
+                                        null));
 
                         subEventService.create(new CreateSubEventRequest(
                                         evt.id(),
@@ -55,14 +57,16 @@ public class DataInitializer {
                                         LocalDate.now(),
                                         List.of(
                                                         new ShareSplit(alice.id(), new BigDecimal("450.00")),
-                                                        new ShareSplit(carol.id(), new BigDecimal("450.00")))));
+                                                        new ShareSplit(carol.id(), new BigDecimal("450.00"))),
+                                        false,
+                                        null));
 
                         var dinnerShares = shareService.listByUser(bob.id());
                         dinnerShares.stream()
                                         .filter(s -> s.subEventId().equals(dinner.id()))
                                         .findFirst()
                                         .ifPresent(s -> {
-                                                paymentService.markPaid(new MarkPaymentRequest(s.id(), bob.id()));
+                                                paymentService.markPaid(new MarkPaymentRequest(s.id(), bob.id(), null, null));
                                                 paymentService.confirm(new ConfirmPaymentRequest(s.id(), alice.id()));
                                         });
                 };

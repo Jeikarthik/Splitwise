@@ -31,10 +31,14 @@ public class GroupService {
     public DtoModels.GroupResponse create(DtoModels.CreateGroupRequest req) {
         User creator = userRepository.findById(req.creatorId())
                 .orElseThrow(() -> new NotFoundException("Creator not found: " + req.creatorId()));
-        Group g = Group.builder().name(req.name()).creator(creator).build();
-        // Enforce invite-by-ID-only: at creation, only the creator is a member
+        Group g = Group.builder().name(req.name()).creator(creator).budgetLimit(req.budgetLimit()).build();
         Set<User> members = new HashSet<>();
         members.add(creator);
+        if (req.memberIds() != null) {
+            for (Long mId : req.memberIds()) {
+                userRepository.findById(mId).ifPresent(members::add);
+            }
+        }
         g.setMembers(members);
         g.setGroupCode(generateUniqueCode());
         g = groupRepository.save(g);
@@ -65,10 +69,10 @@ public class GroupService {
         Group g = groupRepository.findById(groupId)
                 .orElseThrow(() -> new NotFoundException("Group not found: " + groupId));
 
-        // Only creator can remove members
-        if (!g.getCreator().getId().equals(actorUserId)) {
+        // Only creator can remove members, or a member can remove themselves (exit/leave group)
+        if (!g.getCreator().getId().equals(actorUserId) && !userId.equals(actorUserId)) {
             throw new com.groupfinancetracker.exception.ForbiddenActionException(
-                    "Only the group creator can remove members");
+                    "Only the group creator can remove members, or a member can leave themselves");
         }
 
         // Cannot remove creator
@@ -93,7 +97,7 @@ public class GroupService {
     private DtoModels.GroupResponse toDto(Group g) {
         Set<Long> memberIds = g.getMembers().stream().map(User::getId).collect(java.util.stream.Collectors.toSet());
         return new DtoModels.GroupResponse(g.getId(), g.getName(), g.getCreator().getId(), memberIds, g.getCreatedAt(),
-                g.getGroupCode());
+                g.getGroupCode(), g.getBudgetLimit());
     }
 
     private String generateUniqueCode() {

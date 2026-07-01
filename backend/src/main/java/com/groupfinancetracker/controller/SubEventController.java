@@ -25,7 +25,9 @@ public class SubEventController {
                 req.totalAmount(),
                 actorId,
                 req.subEventDate(),
-                req.shares()
+                req.shares(),
+                req.isRecurring(),
+                req.recurringPeriod()
         ));
     }
 

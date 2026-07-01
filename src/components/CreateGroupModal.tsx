@@ -13,6 +13,7 @@ interface CreateGroupModalProps {
 
 export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModalProps) => {
   const [groupName, setGroupName] = useState('');
+  const [budgetLimit, setBudgetLimit] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
@@ -42,7 +43,7 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
     setSearchResults([]);
   };
 
-  const removeMember = (userId: string) => {
+  const removeMember = (userId: string | number) => {
     setSelectedMembers(selectedMembers.filter((m) => m.id !== userId));
   };
 
@@ -57,10 +58,12 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
     try {
       await groupAPI.create(
         groupName,
-        selectedMembers.map((m) => m.id)
+        selectedMembers.map((m) => m.id),
+        budgetLimit ? parseFloat(budgetLimit) : undefined
       );
       showToast('Group created successfully!', 'success');
       setGroupName('');
+      setBudgetLimit('');
       setSelectedMembers([]);
       onSuccess();
     } catch (error: any) {
@@ -84,6 +87,20 @@ export const CreateGroupModal = ({ isOpen, onClose, onSuccess }: CreateGroupModa
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             placeholder="e.g., Weekend Trip"
             required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Weekly Budget Limit (Optional, in ₹)
+          </label>
+          <input
+            type="number"
+            value={budgetLimit}
+            onChange={(e) => setBudgetLimit(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="e.g., 5000"
+            min="0"
           />
         </div>
 

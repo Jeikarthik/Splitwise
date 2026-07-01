@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Modal } from './Modal';
-import { subEventAPI, eventAPI, groupAPI } from '../lib/api';
+import { subEventAPI, eventAPI, groupAPI, userAPI } from '../lib/api';
 import { User } from '../types';
 import { useToast } from './Toast';
 
@@ -21,9 +21,13 @@ export const CreateSubEventModal = ({
   const [totalAmount, setTotalAmount] = useState('');
   const [splitType, setSplitType] = useState<'EQUAL' | 'CUSTOM'>('EQUAL');
   const [groupMembers, setGroupMembers] = useState<User[]>([]);
-  const [selectedSharers, setSelectedSharers] = useState<string[]>([]);
-  const [customAmounts, setCustomAmounts] = useState<Record<string, string>>({});
+  const [selectedSharers, setSelectedSharers] = useState<(string | number)[]>([]);
+  const [customAmounts, setCustomAmounts] = useState<Record<string | number, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringPeriod, setRecurringPeriod] = useState<string>('DAILY');
+  const [payerId, setPayerId] = useState<string | number>('');
+  const [subEventDate, setSubEventDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -31,7 +35,29 @@ export const CreateSubEventModal = ({
       try {
         const response = await eventAPI.getById(eventId);
         const groupResponse = await groupAPI.getById(response.data.groupId);
-        setGroupMembers(groupResponse.data.members || []);
+        const groupData = groupResponse.data;
+        // Backend returns memberIds (Set<Long>), fetch all users and filter
+        try {
+          const usersResponse = await userAPI.getAll();
+          const allUsers: User[] = usersResponse.data;
+          const memberIdSet = new Set(
+            (groupData.memberIds || groupData.members?.map((m: any) => m.id) || []).map((id: any) => String(id))
+          );
+          const members = allUsers.filter((u: User) => memberIdSet.has(String(u.id)));
+          setGroupMembers(members);
+          // Default payer to current logged-in user if they are a member
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const currentUser = JSON.parse(storedUser);
+            if (memberIdSet.has(String(currentUser.id))) {
+              setPayerId(currentUser.id);
+            } else if (members.length > 0) {
+              setPayerId(members[0].id);
+            }
+          }
+        } catch {
+          setGroupMembers(groupData.members || []);
+        }
       } catch (error) {
         showToast('Failed to load group members', 'error');
       }
@@ -42,7 +68,7 @@ export const CreateSubEventModal = ({
     }
   }, [isOpen, eventId]);
 
-  const toggleSharer = (userId: string) => {
+  const toggleSharer = (userId: string | number) => {
     if (selectedSharers.includes(userId)) {
       setSelectedSharers(selectedSharers.filter((id) => id !== userId));
       const newCustomAmounts = { ...customAmounts };
@@ -53,7 +79,7 @@ export const CreateSubEventModal = ({
     }
   };
 
-  const handleCustomAmountChange = (userId: string, amount: string) => {
+  const handleCustomAmountChange = (userId: string | number, amount: string) => {
     setCustomAmounts({
       ...customAmounts,
       [userId]: amount,
@@ -68,8 +94,13 @@ export const CreateSubEventModal = ({
       return;
     }
 
+    if (!payerId) {
+      showToast('Please select who paid', 'error');
+      return;
+    }
+
     if (splitType === 'CUSTOM') {
-      const totalCustom = selectedSharers.reduce(
+      const totalCustom = selectedSharers.reduce<number>(
         (sum, id) => sum + (parseFloat(customAmounts[id]) || 0),
         0
       );
@@ -85,6 +116,8 @@ export const CreateSubEventModal = ({
         eventId,
         title,
         totalAmount: parseFloat(totalAmount),
+        payerId,
+        subEventDate,
         sharerIds: selectedSharers,
         splitType,
         customAmounts:
@@ -93,6 +126,8 @@ export const CreateSubEventModal = ({
                 Object.entries(customAmounts).map(([k, v]) => [k, parseFloat(v)])
               )
             : undefined,
+        isRecurring,
+        recurringPeriod: isRecurring ? recurringPeriod : undefined,
       });
       showToast('Payment created successfully!', 'success');
       setTitle('');
@@ -100,6 +135,8 @@ export const CreateSubEventModal = ({
       setSelectedSharers([]);
       setCustomAmounts({});
       setSplitType('EQUAL');
+      setIsRecurring(false);
+      setRecurringPeriod('DAILY');
       onSuccess();
     } catch (error: any) {
       showToast(error.response?.data?.message || 'Failed to create payment', 'error');
@@ -127,6 +164,36 @@ export const CreateSubEventModal = ({
             placeholder="e.g., Lunch"
             required
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Payment Date
+          </label>
+          <input
+            type="date"
+            value={subEventDate}
+            onChange={(e) => setSubEventDate(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Paid by
+          </label>
+          <select
+            value={String(payerId)}
+            onChange={(e) => setPayerId(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            required
+          >
+            <option value="">-- Select payer --</option>
+            {groupMembers.map((m) => (
+              <option key={m.id} value={String(m.id)}>{m.name}</option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -170,6 +237,47 @@ export const CreateSubEventModal = ({
               <span className="text-sm text-gray-700 dark:text-gray-300">Custom Amounts</span>
             </label>
           </div>
+        </div>
+
+        {/* Recurring Payment Option */}
+        <div className={`space-y-3 p-4 rounded-xl border-2 transition-colors ${
+          isRecurring
+            ? 'bg-purple-50 dark:bg-purple-950/20 border-purple-300 dark:border-purple-800'
+            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+        }`}>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => {
+                setIsRecurring(e.target.checked);
+                if (e.target.checked) setRecurringPeriod('MONTHLY');
+              }}
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+            />
+            <div>
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                ♻️ Make this a Monthly Recurring Payment
+              </span>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                This payment will be automatically re-created every 30 days
+              </p>
+            </div>
+          </label>
+
+          {isRecurring && (
+            <div className="bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800/50 rounded-lg p-3 mt-2">
+              <p className="text-xs text-purple-700 dark:text-purple-300 font-medium flex items-center gap-1.5 mb-1">
+                ℹ️ How recurring payments work
+              </p>
+              <ul className="text-xs text-purple-600 dark:text-purple-400 space-y-1 list-disc list-inside">
+                <li>A new payment copy is auto-added <b>every 30 days</b></li>
+                <li>The original is marked with a ♻️ badge in the payments list</li>
+                <li>Each copy starts as <b>PENDING</b> — members must mark it paid</li>
+                <li>You can stop recurrence by deleting the original payment</li>
+              </ul>
+            </div>
+          )}
         </div>
 
         <div>

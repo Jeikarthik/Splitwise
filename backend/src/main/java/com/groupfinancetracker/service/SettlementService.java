@@ -61,42 +61,14 @@ public class SettlementService {
         if (!groupRepository.existsById(groupId))
             throw new NotFoundException("Group not found: " + groupId);
         List<Share> shares = shareRepository.findBySubEvent_Event_Group_Id(groupId);
-        Map<String, BigDecimal> raw = new HashMap<>();
-        for (Share s : shares) {
-            Long from = s.getUser().getId(); // debtor
-            Long to = s.getSubEvent().getPayer().getId(); // payer
-            if (Objects.equals(from, to))
-                continue;
-            // Exclude confirmed payments so only outstanding amounts are considered
-            if (s.getPaymentStatus() != null && s.getPaymentStatus().getStatus() == PaymentState.CONFIRMED) {
-                continue;
-            }
-            String key = from + "->" + to;
-            raw.merge(key, s.getAmount(), BigDecimal::add);
+        List<DtoModels.PairwiseBalance> pairwiseBalances = calculateSimplifiedPairwise(shares);
+
+        List<DtoModels.PairwiseOwe> owes = new ArrayList<>();
+        for (DtoModels.PairwiseBalance pb : pairwiseBalances) {
+            owes.add(new DtoModels.PairwiseOwe(pb.user1Id(), pb.user2Id(), pb.amount(), pb.description()));
         }
-        // Net pairs: keep only the positive difference in one direction
-        Map<String, BigDecimal> net = new HashMap<>();
-        for (String key : raw.keySet()) {
-            String[] parts = key.split("->");
-            String rev = parts[1] + "->" + parts[0];
-            BigDecimal a = raw.getOrDefault(key, BigDecimal.ZERO);
-            BigDecimal b = raw.getOrDefault(rev, BigDecimal.ZERO);
-            if (a.compareTo(b) > 0) {
-                net.put(key, a.subtract(b));
-            }
-        }
-        List<DtoModels.PairwiseOwe> list = new ArrayList<>();
-        for (Map.Entry<String, BigDecimal> e : net.entrySet()) {
-            if (e.getValue() == null || e.getValue().compareTo(BigDecimal.ZERO) <= 0)
-                continue;
-            String[] parts = e.getKey().split("->");
-            Long from = Long.parseLong(parts[0]);
-            Long to = Long.parseLong(parts[1]);
-            list.add(new DtoModels.PairwiseOwe(from, to, e.getValue()));
-        }
-        list.sort(
-                Comparator.comparing(DtoModels.PairwiseOwe::fromUserId).thenComparing(DtoModels.PairwiseOwe::toUserId));
-        return new DtoModels.GroupPairwise(groupId, list);
+
+        return new DtoModels.GroupPairwise(groupId, owes, pairwiseBalances);
     }
 
     public DtoModels.WeeklySettlementResponse weeklySettlements(@NonNull Long groupId, @NonNull Integer weekNumber,
@@ -106,77 +78,21 @@ public class SettlementService {
         List<Share> shares = shareRepository
                 .findBySubEvent_Event_Group_IdAndSubEvent_WeekNumberAndSubEvent_Year(groupId, weekNumber, year);
 
-        // Build pair totals excluding confirmed (i.e., outstanding only)
-        Map<Long, String> userNames = new HashMap<>();
-        Map<String, BigDecimal> raw = new HashMap<>(); // from->to outstanding
-        for (Share s : shares) {
-            Long from = s.getUser().getId();
-            Long to = s.getSubEvent().getPayer().getId();
-            if (Objects.equals(from, to))
-                continue;
-            userNames.putIfAbsent(from, null);
-            userNames.putIfAbsent(to, null);
-            if (s.getPaymentStatus() != null && s.getPaymentStatus().getStatus() == PaymentState.CONFIRMED) {
-                continue; // deduct confirmed amounts (skip)
-            }
-            raw.merge(from + "->" + to, s.getAmount(), BigDecimal::add);
-        }
+        List<DtoModels.PairwiseBalance> pairwise = calculateSimplifiedPairwise(shares);
 
-        // Net pairs
-        Map<String, BigDecimal> net = new HashMap<>();
-        for (String key : raw.keySet()) {
-            String[] parts = key.split("->");
-            String rev = parts[1] + "->" + parts[0];
-            BigDecimal a = raw.getOrDefault(key, BigDecimal.ZERO);
-            BigDecimal b = raw.getOrDefault(rev, BigDecimal.ZERO);
-            int cmp = a.compareTo(b);
-            if (cmp > 0) {
-                net.put(key, a.subtract(b));
-            } else if (cmp < 0) {
-                // will be handled when iterating rev
-            } else {
-                // equal -> settled
-            }
-        }
-
-        // Resolve user names via UserService
-        userNames.replaceAll((id, v) -> {
-            try {
-                return userService.get(id).name();
-            } catch (Exception e) {
-                return String.valueOf(id);
-            }
-        });
-
-        // Build pairwise balances and toPay/toReceive for current user
-        List<DtoModels.PairwiseBalance> pairwise = new ArrayList<>();
         List<DtoModels.ToPayEntry> toPay = new ArrayList<>();
         List<DtoModels.ToReceiveEntry> toReceive = new ArrayList<>();
-        for (Map.Entry<String, BigDecimal> e : net.entrySet()) {
-            if (e.getValue() == null || e.getValue().compareTo(BigDecimal.ZERO) <= 0)
-                continue;
-            String[] parts = e.getKey().split("->");
-            Long from = Long.parseLong(parts[0]);
-            Long to = Long.parseLong(parts[1]);
-            BigDecimal amount = e.getValue();
-            pairwise.add(new DtoModels.PairwiseBalance(
-                    from, userNames.getOrDefault(from, String.valueOf(from)),
-                    to, userNames.getOrDefault(to, String.valueOf(to)),
-                    amount,
-                    userNames.getOrDefault(from, String.valueOf(from))));
+
+        for (DtoModels.PairwiseBalance pb : pairwise) {
             if (currentUserId != null) {
-                if (Objects.equals(currentUserId, from)) {
-                    toPay.add(new DtoModels.ToPayEntry(to, userNames.getOrDefault(to, String.valueOf(to)), amount));
-                } else if (Objects.equals(currentUserId, to)) {
-                    toReceive.add(new DtoModels.ToReceiveEntry(from, userNames.getOrDefault(from, String.valueOf(from)),
-                            amount));
+                if (Objects.equals(currentUserId, pb.user1Id())) {
+                    toPay.add(new DtoModels.ToPayEntry(pb.user2Id(), pb.user2(), pb.amount()));
+                } else if (Objects.equals(currentUserId, pb.user2Id())) {
+                    toReceive.add(new DtoModels.ToReceiveEntry(pb.user1Id(), pb.user1(), pb.amount()));
                 }
             }
         }
 
-        // Sort outputs
-        pairwise.sort(Comparator.comparing(DtoModels.PairwiseBalance::user1Id)
-                .thenComparing(DtoModels.PairwiseBalance::user2Id));
         toPay.sort(Comparator.comparing(DtoModels.ToPayEntry::toUser));
         toReceive.sort(Comparator.comparing(DtoModels.ToReceiveEntry::fromUser));
 
@@ -185,30 +101,48 @@ public class SettlementService {
 
     public DtoModels.EventSettlementResponse eventPairwise(@NonNull Long eventId) {
         List<Share> shares = shareRepository.findBySubEvent_Event_Id(eventId);
+        List<DtoModels.PairwiseBalance> pairwise = calculateSimplifiedPairwise(shares);
+        return new DtoModels.EventSettlementResponse(eventId, pairwise);
+    }
+
+    private List<DtoModels.PairwiseBalance> calculateSimplifiedPairwise(List<Share> shares) {
+        Map<Long, BigDecimal> netBalances = new HashMap<>();
         Map<Long, String> userNames = new HashMap<>();
-        Map<String, BigDecimal> raw = new HashMap<>();
+        Map<String, BigDecimal> rawPairwise = new HashMap<>();
+
         for (Share s : shares) {
-            Long from = s.getUser().getId();
-            Long to = s.getSubEvent().getPayer().getId();
-            if (Objects.equals(from, to))
-                continue;
             if (s.getPaymentStatus() != null && s.getPaymentStatus().getStatus() == PaymentState.CONFIRMED) {
                 continue;
             }
-            userNames.putIfAbsent(from, null);
-            userNames.putIfAbsent(to, null);
-            raw.merge(from + "->" + to, s.getAmount(), BigDecimal::add);
+            Long fromId = s.getUser().getId();
+            Long toId = s.getSubEvent().getPayer().getId();
+            BigDecimal amount = s.getAmount();
+
+            if (Objects.equals(fromId, toId)) {
+                continue;
+            }
+
+            netBalances.merge(fromId, amount.negate(), BigDecimal::add);
+            netBalances.merge(toId, amount, BigDecimal::add);
+
+            userNames.putIfAbsent(fromId, null);
+            userNames.putIfAbsent(toId, null);
+
+            String key = fromId + "->" + toId;
+            rawPairwise.merge(key, amount, BigDecimal::add);
         }
-        Map<String, BigDecimal> net = new HashMap<>();
-        for (String key : raw.keySet()) {
+
+        Map<String, BigDecimal> originalDirectNet = new HashMap<>();
+        for (String key : rawPairwise.keySet()) {
             String[] parts = key.split("->");
             String rev = parts[1] + "->" + parts[0];
-            BigDecimal a = raw.getOrDefault(key, BigDecimal.ZERO);
-            BigDecimal b = raw.getOrDefault(rev, BigDecimal.ZERO);
-            int cmp = a.compareTo(b);
-            if (cmp > 0)
-                net.put(key, a.subtract(b));
+            BigDecimal a = rawPairwise.getOrDefault(key, BigDecimal.ZERO);
+            BigDecimal b = rawPairwise.getOrDefault(rev, BigDecimal.ZERO);
+            if (a.compareTo(b) > 0) {
+                originalDirectNet.put(key, a.subtract(b));
+            }
         }
+
         userNames.replaceAll((id, v) -> {
             try {
                 return userService.get(id).name();
@@ -216,23 +150,91 @@ public class SettlementService {
                 return String.valueOf(id);
             }
         });
-        List<DtoModels.PairwiseBalance> pairwise = new ArrayList<>();
-        for (Map.Entry<String, BigDecimal> e : net.entrySet()) {
-            if (e.getValue() == null || e.getValue().compareTo(BigDecimal.ZERO) <= 0)
-                continue;
-            String[] parts = e.getKey().split("->");
-            Long from = Long.parseLong(parts[0]);
-            Long to = Long.parseLong(parts[1]);
-            BigDecimal amount = e.getValue();
-            pairwise.add(new DtoModels.PairwiseBalance(
-                    from, userNames.getOrDefault(from, String.valueOf(from)),
-                    to, userNames.getOrDefault(to, String.valueOf(to)),
-                    amount,
-                    userNames.getOrDefault(from, String.valueOf(from))));
+
+        List<UserBalanceTemp> debtors = new ArrayList<>();
+        List<UserBalanceTemp> creditors = new ArrayList<>();
+
+        for (Map.Entry<Long, BigDecimal> entry : netBalances.entrySet()) {
+            BigDecimal bal = entry.getValue();
+            if (bal.compareTo(BigDecimal.ZERO) < 0) {
+                debtors.add(new UserBalanceTemp(entry.getKey(), bal));
+            } else if (bal.compareTo(BigDecimal.ZERO) > 0) {
+                creditors.add(new UserBalanceTemp(entry.getKey(), bal));
+            }
         }
-        pairwise.sort(Comparator.comparing(DtoModels.PairwiseBalance::user1Id)
+
+        List<DtoModels.PairwiseBalance> result = new ArrayList<>();
+
+        while (!debtors.isEmpty() && !creditors.isEmpty()) {
+            debtors.sort(Comparator.comparing(UserBalanceTemp::getBalance));
+            creditors.sort((c1, c2) -> c2.getBalance().compareTo(c1.getBalance()));
+
+            UserBalanceTemp debtor = debtors.get(0);
+            UserBalanceTemp creditor = creditors.get(0);
+
+            BigDecimal dVal = debtor.getBalance().negate();
+            BigDecimal cVal = creditor.getBalance();
+
+            BigDecimal amount = dVal.min(cVal);
+
+            debtor.setBalance(debtor.getBalance().add(amount));
+            creditor.setBalance(creditor.getBalance().subtract(amount));
+
+            if (debtor.getBalance().abs().compareTo(new BigDecimal("0.005")) < 0) {
+                debtors.remove(0);
+            }
+            if (creditor.getBalance().abs().compareTo(new BigDecimal("0.005")) < 0) {
+                creditors.remove(0);
+            }
+
+            if (amount.compareTo(new BigDecimal("0.005")) > 0) {
+                Long from = debtor.getUserId();
+                Long to = creditor.getUserId();
+                String fromName = userNames.getOrDefault(from, String.valueOf(from));
+                String toName = userNames.getOrDefault(to, String.valueOf(to));
+
+                List<String> details = new ArrayList<>();
+                for (Map.Entry<String, BigDecimal> direct : originalDirectNet.entrySet()) {
+                    String[] parts = direct.getKey().split("->");
+                    Long u1 = Long.parseLong(parts[0]);
+                    Long u2 = Long.parseLong(parts[1]);
+
+                    if (u1.equals(from) || u2.equals(from) || u1.equals(to) || u2.equals(to)) {
+                        String u1Name = userNames.getOrDefault(u1, String.valueOf(u1));
+                        String u2Name = userNames.getOrDefault(u2, String.valueOf(u2));
+                        details.add(u1Name + " owed " + u2Name + " \u20B9" + direct.getValue().setScale(2, java.math.RoundingMode.HALF_UP));
+                    }
+                }
+
+                String description = "Simplified from direct balances: " + String.join(", ", details);
+
+                result.add(new DtoModels.PairwiseBalance(
+                        from, fromName,
+                        to, toName,
+                        amount,
+                        fromName,
+                        description
+                ));
+            }
+        }
+
+        result.sort(Comparator.comparing(DtoModels.PairwiseBalance::user1Id)
                 .thenComparing(DtoModels.PairwiseBalance::user2Id));
-        return new DtoModels.EventSettlementResponse(eventId, pairwise);
+        return result;
+    }
+
+    private static class UserBalanceTemp {
+        private final Long userId;
+        private BigDecimal balance;
+
+        public UserBalanceTemp(Long userId, BigDecimal balance) {
+            this.userId = userId;
+            this.balance = balance;
+        }
+
+        public Long getUserId() { return userId; }
+        public BigDecimal getBalance() { return balance; }
+        public void setBalance(BigDecimal balance) { this.balance = balance; }
     }
 
     public DtoModels.SpendResponse mySpendForEvent(@NonNull Long eventId, @NonNull Long actorUserId) {

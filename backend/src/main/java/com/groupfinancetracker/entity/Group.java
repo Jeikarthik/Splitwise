@@ -26,6 +26,9 @@ public class Group {
     @Column(name = "group_code", unique = true)
     private String groupCode;
 
+    @Column(name = "budget_limit", precision = 15, scale = 2)
+    private java.math.BigDecimal budgetLimit;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "creator_id", nullable = false)
     private User creator;
